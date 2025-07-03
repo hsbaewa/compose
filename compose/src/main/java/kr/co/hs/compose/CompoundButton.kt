@@ -19,6 +19,7 @@ import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -133,7 +134,13 @@ fun RadioGroup(
     spaceWithLabel: Dp? = null,
     onSelectedIndex: ((Int) -> Unit)? = null
 ) {
-    var select by remember { mutableIntStateOf(selected ?: -1) }
+    var select by remember { mutableIntStateOf(-1) }
+    LaunchedEffect(selected) {
+        selected?.let {
+            select = it
+            onSelectedIndex?.invoke(it)
+        }
+    }
 
     Column(modifier = modifier) {
         list.fastForEachIndexed { i, s ->
