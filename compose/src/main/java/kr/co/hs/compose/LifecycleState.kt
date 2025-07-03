@@ -17,31 +17,50 @@ import kotlinx.coroutines.flow.StateFlow
 
 @Composable
 fun StateFlow<Lifecycle.State>.collectAsState(
-    onCreated: (Lifecycle.State) -> Unit = {},
-    onStarted: (Lifecycle.State) -> Unit = {},
-    onRestarted: (Lifecycle.State) -> Unit = {},
-    onResumed: (Lifecycle.State) -> Unit = {}
+    onCreate: (Lifecycle.State) -> Unit = {},
+    onStart: (Lifecycle.State) -> Unit = {},
+    onRestart: (Lifecycle.State) -> Unit = {},
+    onResume: (Lifecycle.State) -> Unit = {},
+    onPause: (Lifecycle.State) -> Unit = {},
+    onStop: (Lifecycle.State) -> Unit = {},
+    onDestroy: (Lifecycle.State) -> Unit = {},
 ): State<Lifecycle.State> {
     val state = collectAsState()
     var lastState by remember { mutableStateOf<Lifecycle.State?>(null) }
     LaunchedEffect(state.value) {
 
-        when (state.value) {
-            Lifecycle.State.DESTROYED -> {}
-            Lifecycle.State.INITIALIZED -> {}
-            Lifecycle.State.CREATED -> onCreated(state.value)
-            Lifecycle.State.STARTED -> onStarted(state.value)
-            Lifecycle.State.RESUMED -> onResumed(state.value)
+        val current = state.value
+        val last = lastState ?: Lifecycle.State.DESTROYED
+
+        if (last < current) {
+            when {
+                current.isAtLeast(Lifecycle.State.RESUMED) -> onResume(current)
+                current.isAtLeast(Lifecycle.State.STARTED) -> onStart(current)
+                current.isAtLeast(Lifecycle.State.CREATED) -> onCreate(current)
+            }
+
+            if (last == Lifecycle.State.CREATED) {
+                onRestart(current)
+            }
+        } else {
+            when {
+                current.isEqualsOrBelow(Lifecycle.State.CREATED) -> {
+//                    onDestroy(current)
+                }
+
+                current.isEqualsOrBelow(Lifecycle.State.STARTED) -> onStop(current)
+                current.isEqualsOrBelow(Lifecycle.State.RESUMED) -> onPause(current)
+            }
         }
 
-        if (state.value.isAtLeast(Lifecycle.State.STARTED) && lastState == Lifecycle.State.CREATED) {
-            onRestarted(state.value)
-        }
-
-        lastState = state.value
+        lastState = current
     }
 
     return state
+}
+
+private fun Lifecycle.State.isEqualsOrBelow(state: Lifecycle.State): Boolean {
+    return compareTo(state) <= 0
 }
 
 @Deprecated("use collectAsState(onCreated: onStarted: onRestarted: onResumed:)")
